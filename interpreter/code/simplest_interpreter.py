@@ -37,19 +37,11 @@ class SimpleInterpreter(object):
         self.should_stop = True
 
     def parse_argument(self, instruction, argument, what_to_execute):
-        argument_meaning = {"numbers": ["LOAD_VALUE"],
-                            "names": ["LOAD_NAME", "STORE_NAME"],
-                            "jumps": ["JUMP_IF_FALSE"]}
-
-        if instruction in argument_meaning["numbers"]:
-            argument = what_to_execute["numbers"][argument]
-        elif instruction in argument_meaning["names"]:
-            argument = what_to_execute["names"][argument]
-        elif instruction in argument_meaning["jumps"]:
-            pass
-
+        if instruction == "LOAD_VALUE":
+            return what_to_execute["numbers"][argument]
+        elif instruction == "LOAD_NAME" or instruction == "STORE_NAME":
+            return what_to_execute["names"][argument]
         return argument
-
 
     # def execute(self, what_to_execute):
     #     instructions = what_to_execute["instructions"]
@@ -88,52 +80,64 @@ class SimpleInterpreter(object):
             else:
                 bytecode_method(argument)
 
+
 def test_simple_interpreter():
     simple = SimpleInterpreter()
     what_to_execute = {
-        "instructions": [("LOAD_VALUE", 0),  # the first number
-                        ("LOAD_VALUE", 1),  # the second number
-                        ("ADD_TWO_VALUES", None),
-                        ("PRINT_ANSWER", None)],
-        "numbers": [7,5] }
+        "instructions": [
+            ("LOAD_VALUE", 0),  # the first number
+            ("LOAD_VALUE", 1),  # the second number
+            ("ADD_TWO_VALUES", None),
+            ("PRINT_ANSWER", None),
+        ],
+        "numbers": [7, 5],
+    }
     simple.execute(what_to_execute)
     print(" == 12")
 
     what_to_execute = {
-        "instructions": [("LOAD_VALUE", 0),  # the first number
-                        ("LOAD_VALUE", 1),  # the second number
-                        ("ADD_TWO_VALUES", None),
-                        ("LOAD_VALUE", 2),  # the second number
-                        ("ADD_TWO_VALUES", None),
-                        ("PRINT_ANSWER", None)],
-        "numbers": [7,5, 8] }
+        "instructions": [
+            ("LOAD_VALUE", 0),  # the first number
+            ("LOAD_VALUE", 1),  # the second number
+            ("ADD_TWO_VALUES", None),
+            ("LOAD_VALUE", 2),  # the second number
+            ("ADD_TWO_VALUES", None),
+            ("PRINT_ANSWER", None),
+        ],
+        "numbers": [7, 5, 8],
+    }
     simple.execute(what_to_execute)
     print(" == 20")
 
     what_to_execute = {
-        "instructions": [("LOAD_VALUE", 0),
-                         ("STORE_NAME", 0),
-                         ("LOAD_VALUE", 1),
-                         ("STORE_NAME", 1),
-                         ("LOAD_NAME", 0),
-                         ("LOAD_NAME", 1),
-                         ("ADD_TWO_VALUES", None),
-                         ("PRINT_ANSWER", None)],
+        "instructions": [
+            ("LOAD_VALUE", 0),
+            ("STORE_NAME", 0),
+            ("LOAD_VALUE", 1),
+            ("STORE_NAME", 1),
+            ("LOAD_NAME", 0),
+            ("LOAD_NAME", 1),
+            ("ADD_TWO_VALUES", None),
+            ("PRINT_ANSWER", None),
+        ],
         "numbers": [1, 2],
-        "names":   ["a", "b"] }
+        "names": ["a", "b"],
+    }
     simple.execute(what_to_execute)
     print(" == 3")
 
     what_to_execute = {
-        "instructions": [("LOAD_VALUE", 0),
-                        ("JUMP_IF_FALSE", None),
-                        ("LOAD_VALUE", 1),  # the second number
-                        ("PRINT_ANSWER", None),
-                        ("LOAD_VALUE", 2),  # the second number
-                        ("PRINT_ANSWER", None)],
-        "values": [True, 'yes', 'no'] }
+        "instructions": [
+            ("LOAD_VALUE", 0),
+            ("JUMP_IF_FALSE", None),
+            ("LOAD_VALUE", 1),  # the second number
+            ("PRINT_ANSWER", None),
+            ("LOAD_VALUE", 2),  # the second number
+            ("PRINT_ANSWER", None),
+        ],
+        "values": [True, "yes", "no"],
+    }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_simple_interpreter()
-
