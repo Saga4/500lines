@@ -1,5 +1,6 @@
 # Abandoned this because calculating jump targets by hand is *so tedious*
 
+
 class SimpleInterpreter(object):
     def __init__(self):
         self.stack = []
@@ -47,19 +48,14 @@ class SimpleInterpreter(object):
         self.should_stop = True
 
     def parse_argument(self, instruction, argument, what_to_execute):
-        argument_meaning = {"values": ["LOAD_VALUE"],
-                            "names": ["LOAD_NAME", "STORE_NAME"],
-                            "jumps": ["JUMP_IF_FALSE", "JUMP"]}
-
-        if instruction in argument_meaning["values"]:
+        if instruction == "LOAD_VALUE":
             argument = what_to_execute["values"][argument]
-        elif instruction in argument_meaning["names"]:
+        elif instruction == "LOAD_NAME" or instruction == "STORE_NAME":
             argument = what_to_execute["names"][argument]
-        elif instruction in argument_meaning["jumps"]:
+        elif instruction == "JUMP_IF_FALSE" or instruction == "JUMP":
             pass
 
         return argument
-
 
     def execute(self, what_to_execute):
         instructions = what_to_execute["instructions"]
@@ -92,73 +88,82 @@ class SimpleInterpreter(object):
 
             self.next_i += 1
 
+
 def test_simple_interpreter():
     def test_conditional_true():
         what_to_execute = {
-            "instructions": [("LOAD_VALUE", 0),
-                             ("STORE_NAME", 0),
-                             ("LOAD_NAME", 0),
-                             ("JUMP_IF_FALSE", 6),
-                             ("LOAD_VALUE", 1),
-                             ("PRINT_ANSWER", None),
-                             ("RETURN", None),
-                             ("LOAD_VALUE", 2),
-                             ("PRINT_ANSWER", None),
-                             ("RETURN", None)],
-            "values": [True, 'yes', 'no'],
-            "names": ["a"] }
+            "instructions": [
+                ("LOAD_VALUE", 0),
+                ("STORE_NAME", 0),
+                ("LOAD_NAME", 0),
+                ("JUMP_IF_FALSE", 6),
+                ("LOAD_VALUE", 1),
+                ("PRINT_ANSWER", None),
+                ("RETURN", None),
+                ("LOAD_VALUE", 2),
+                ("PRINT_ANSWER", None),
+                ("RETURN", None),
+            ],
+            "values": [True, "yes", "no"],
+            "names": ["a"],
+        }
 
         interpreter = SimpleInterpreter()
         interpreter.execute(what_to_execute)
         print("== 'yes'")
+
     test_conditional_true()
 
     def test_conditional_false():
         what_to_execute = {
-            "instructions": [("LOAD_VALUE", 0),
-                             ("STORE_NAME", 0),
-                             ("LOAD_NAME", 0),
-                             ("JUMP_IF_FALSE", 6),
-                             ("LOAD_VALUE", 1),
-                             ("PRINT_ANSWER", None),
-                             ("RETURN", None),
-                             ("LOAD_VALUE", 2),
-                             ("PRINT_ANSWER", None),
-                             ("RETURN", None)],
-            "values": [False, 'yes', 'no'],
-            "names": ["a"] }
+            "instructions": [
+                ("LOAD_VALUE", 0),
+                ("STORE_NAME", 0),
+                ("LOAD_NAME", 0),
+                ("JUMP_IF_FALSE", 6),
+                ("LOAD_VALUE", 1),
+                ("PRINT_ANSWER", None),
+                ("RETURN", None),
+                ("LOAD_VALUE", 2),
+                ("PRINT_ANSWER", None),
+                ("RETURN", None),
+            ],
+            "values": [False, "yes", "no"],
+            "names": ["a"],
+        }
         interpreter = SimpleInterpreter()
         interpreter.execute(what_to_execute)
         print("== 'no'")
+
     test_conditional_false()
 
     # def test_loop():
-        # >>> def loop():
-        #         x = 1
-        # ...     while x < 5:
-        # ...         print("going")
-        # what_to_execute = {
-        #     "instructions": [("LOAD_VALUE", 0),
-        #                      ("STORE_NAME", 0),
-        #                      ("LOAD_NAME", 0),
-        #                      ("LOAD_VALUE", 1),
-        #                      ("BINARY_LESS_THAN", None),
-        #                      ("JUMP_IF_FALSE", 8), # <- decide whether or not to jump FIXME
-        #                      ("LOAD_VALUE", 2),
-        #                      ("PRINT_ANSWER", None),
-        #                      ("LOAD_NAME", 0),
-        #                      ("LOAD_VALUE", 1),
-        #                      ("ADD_TWO_VALUES", None),
-        #                      ("STORE_NAME", 0),
-        #                      ("JUMP", 1),        # <- Jump to top of loop
-        #                      ("RETURN", None)],  # <- Jump to here when done looping
-        #     "values": [1, 5, 'going'],
-        #     "names": ["x"] }
-        # interpreter = SimpleInterpreter()
-        # interpreter.execute(what_to_execute)
-        # print("==" + "going\n"*5)
+    # >>> def loop():
+    #         x = 1
+    # ...     while x < 5:
+    # ...         print("going")
+    # what_to_execute = {
+    #     "instructions": [("LOAD_VALUE", 0),
+    #                      ("STORE_NAME", 0),
+    #                      ("LOAD_NAME", 0),
+    #                      ("LOAD_VALUE", 1),
+    #                      ("BINARY_LESS_THAN", None),
+    #                      ("JUMP_IF_FALSE", 8), # <- decide whether or not to jump FIXME
+    #                      ("LOAD_VALUE", 2),
+    #                      ("PRINT_ANSWER", None),
+    #                      ("LOAD_NAME", 0),
+    #                      ("LOAD_VALUE", 1),
+    #                      ("ADD_TWO_VALUES", None),
+    #                      ("STORE_NAME", 0),
+    #                      ("JUMP", 1),        # <- Jump to top of loop
+    #                      ("RETURN", None)],  # <- Jump to here when done looping
+    #     "values": [1, 5, 'going'],
+    #     "names": ["x"] }
+    # interpreter = SimpleInterpreter()
+    # interpreter.execute(what_to_execute)
+    # print("==" + "going\n"*5)
     # test_loop()
 
-if __name__ == '__main__':
-    test_simple_interpreter()
 
+if __name__ == "__main__":
+    test_simple_interpreter()
