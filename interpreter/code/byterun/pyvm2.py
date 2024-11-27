@@ -1,9 +1,11 @@
 """A pure-Python Python bytecode interpreter."""
+
 # Adapted from:
 # 1. pyvm2 by Paul Swartz (z3p), from http://www.twistedmatrix.com/users/z3p/
 # 2. byterun by Ned Batchelder, github.com/nedbat/byterun
 
 import dis, operator, sys, collections, inspect, types
+
 
 class Frame(object):
     def __init__(self, code_obj, global_names, local_names, prev_frame):
@@ -15,8 +17,8 @@ class Frame(object):
         if prev_frame:
             self.builtin_names = prev_frame.builtin_names
         else:
-            self.builtin_names = local_names['__builtins__']
-            if hasattr(self.builtin_names, '__dict__'):
+            self.builtin_names = local_names["__builtins__"]
+            if hasattr(self.builtin_names, "__dict__"):
                 self.builtin_names = self.builtin_names.__dict__
 
         self.last_instruction = 0
@@ -53,7 +55,7 @@ class Frame(object):
 
     def unwind_block(self, block):
         """Unwind the values on the data stack when a given block is finished."""
-        if block.type == 'except-handler':
+        if block.type == "except-handler":
             offset = 3
         else:
             offset = 0
@@ -61,20 +63,29 @@ class Frame(object):
         while len(self.stack) > block.stack_height + offset:
             self.pop()
 
-        if block.type == 'except-handler':
+        if block.type == "except-handler":
             traceback, value, exctype = self.popn(3)
             return exctype, value, traceback
 
+
 Block = collections.namedtuple("Block", "type, handler, stack_height")
+
 
 class Function(object):
     __slots__ = [
-        'func_code', 'func_name', 'func_defaults', 'func_globals',
-        'func_locals', 'func_dict', 'func_closure',
-        '__name__', '__dict__', '__doc__',
-        '_vm', '_func',
+        "func_code",
+        "func_name",
+        "func_defaults",
+        "func_globals",
+        "func_locals",
+        "func_dict",
+        "func_closure",
+        "__name__",
+        "__dict__",
+        "__doc__",
+        "_vm",
+        "_func",
     ]
-
 
     def __init__(self, name, code, globs, defaults, closure, vm):
         self._vm = vm
@@ -89,18 +100,17 @@ class Function(object):
 
         # Sometimes, we need a real Python function.  This is for that.
         kw = {
-            'argdefs': self.func_defaults,
+            "argdefs": self.func_defaults,
         }
         if closure:
-            kw['closure'] = tuple(make_cell(0) for _ in closure)
+            kw["closure"] = tuple(make_cell(0) for _ in closure)
         self._func = types.FunctionType(code, globs, **kw)
 
     def __call__(self, *args, **kwargs):
         callargs = inspect.getcallargs(self._func, *args, **kwargs)
-        frame = self._vm.make_frame(
-            self.func_code, callargs, self.func_globals, {}
-        )
+        frame = self._vm.make_frame(self.func_code, callargs, self.func_globals, {})
         return self._vm.run_frame(frame)
+
 
 def make_cell(value):
     # Thanks to Alex Gaynor for help with this bit of twistiness.
@@ -108,13 +118,13 @@ def make_cell(value):
     return fn.__closure__[0]
 
 
-
 class VirtualMachineError(Exception):
     pass
 
+
 class VirtualMachine(object):
     def __init__(self):
-        self.frames = []   # The call stack of frames.
+        self.frames = []  # The call stack of frames.
         self.frame = None  # The current frame.
         self.return_value = None
         self.last_exception = None
@@ -128,10 +138,10 @@ class VirtualMachine(object):
             local_names = {}
         else:
             global_names = local_names = {
-                '__builtins__': __builtins__,
-                '__name__': '__main__',
-                '__doc__': None,
-                '__package__': None,
+                "__builtins__": __builtins__,
+                "__name__": "__main__",
+                "__doc__": None,
+                "__package__": None,
             }
         local_names.update(callargs)
         frame = Frame(code, global_names, local_names, self.frame)
@@ -154,8 +164,10 @@ class VirtualMachine(object):
         self.frame.last_instruction = jump
 
     def run_code(self, code, global_names=None, local_names=None):
-        """ An entry point to execute code using the virtual machine."""
-        frame = self.make_frame(code, global_names=global_names, local_names=local_names)
+        """An entry point to execute code using the virtual machine."""
+        frame = self.make_frame(
+            code, global_names=global_names, local_names=local_names
+        )
 
         self.run_frame(frame)
         # Check some invariants
@@ -174,14 +186,16 @@ class VirtualMachine(object):
         f.last_instruction += 1
         byte_name = dis.opname[byteCode]
         if byteCode >= dis.HAVE_ARGUMENT:
-            arg = f.code_obj.co_code[f.last_instruction:f.last_instruction+2]  # index into the bytecode
-            f.last_instruction += 2   # advance the instruction pointer
+            arg = f.code_obj.co_code[
+                f.last_instruction : f.last_instruction + 2
+            ]  # index into the bytecode
+            f.last_instruction += 2  # advance the instruction pointer
             arg_val = arg[0] + (arg[1] << 8)
-            if byteCode in dis.hasconst:   # Look up a constant
+            if byteCode in dis.hasconst:  # Look up a constant
                 arg = f.code_obj.co_consts[arg_val]
             elif byteCode in dis.hasname:  # Look up a name
                 arg = f.code_obj.co_names[arg_val]
-            elif byteCode in dis.haslocal: # Look up a local name
+            elif byteCode in dis.haslocal:  # Look up a local name
                 arg = f.code_obj.co_varnames[arg_val]
             elif byteCode in dis.hasjrel:  # Calculate a relative jump
                 arg = f.last_instruction + arg_val
@@ -194,36 +208,28 @@ class VirtualMachine(object):
         return byte_name, argument
 
     def dispatch(self, byte_name, argument):
-        """ Dispatch by bytename to the corresponding methods.
+        """Dispatch by bytename to the corresponding methods.
         Exceptions are caught and set on the virtual machine."""
-
-        # When later unwinding the block stack,
-        # we need to keep track of why we are doing it.
-        why = None
         try:
-            bytecode_fn = getattr(self, 'byte_%s' % byte_name, None)
-            if bytecode_fn is None:
-                if byte_name.startswith('UNARY_'):
-                    self.unaryOperator(byte_name[6:])
-                elif byte_name.startswith('BINARY_'):
-                    self.binaryOperator(byte_name[7:])
-                else:
-                    raise VirtualMachineError(
-                        "unsupported bytecode type: %s" % byte_name
-                    )
+            method_name = f"byte_{byte_name}"
+            if hasattr(self, method_name):
+                bytecode_fn = getattr(self, method_name)
+                return bytecode_fn(*argument)
+            elif byte_name.startswith("UNARY_"):
+                self.unaryOperator(byte_name[6:])
+            elif byte_name.startswith("BINARY_"):
+                self.binaryOperator(byte_name[7:])
             else:
-                why = bytecode_fn(*argument)
-        except:
+                raise VirtualMachineError(f"unsupported bytecode type: {byte_name}")
+        except Exception:
             # deal with exceptions encountered while executing the op.
             self.last_exception = sys.exc_info()[:2] + (None,)
-            why = 'exception'
-
-        return why
+            return "exception"
 
     def manage_block_stack(self, why):
         block = self.frame.block_stack[-1]
 
-        if block.type == 'loop' and why == 'continue':
+        if block.type == "loop" and why == "continue":
             self.jump(self.return_value)
             why = None
             return why
@@ -233,27 +239,26 @@ class VirtualMachine(object):
         if current_exc is not None:
             self.last_exception = current_exc
 
-        if block.type == 'loop' and why == 'break':
+        if block.type == "loop" and why == "break":
             self.jump(block.handler)
             why = None
 
-        elif (block.type in ['setup-except', 'finally'] and why == 'exception'):
-            self.frame.push_block('except-handler')
+        elif block.type in ["setup-except", "finally"] and why == "exception":
+            self.frame.push_block("except-handler")
             exctype, value, tb = self.last_exception
             self.frame.push(tb, value, exctype)
-            self.frame.push(tb, value, exctype) # yes, twice
+            self.frame.push(tb, value, exctype)  # yes, twice
             self.jump(block.handler)
             why = None
 
-        elif block.type == 'finally':
-            if why in ('return', 'continue'):
+        elif block.type == "finally":
+            if why in ("return", "continue"):
                 self.frame.push(self.return_value)
             self.frame.push(why)
             self.jump(block.handler)
             why = None
 
         return why
-
 
     def run_frame(self, frame):
         """Run a frame until it returns (somehow).
@@ -274,7 +279,7 @@ class VirtualMachine(object):
 
         self.pop_frame()
 
-        if why == 'exception':
+        if why == "exception":
             exc, val, tb = self.last_exception
             e = exc(val)
             e.__traceback__ = tb
@@ -337,35 +342,40 @@ class VirtualMachine(object):
     ## Operators
 
     UNARY_OPERATORS = {
-        'POSITIVE': operator.pos,
-        'NEGATIVE': operator.neg,
-        'NOT':      operator.not_,
-        'INVERT':   operator.invert,
+        "POSITIVE": operator.pos,
+        "NEGATIVE": operator.neg,
+        "NOT": operator.not_,
+        "INVERT": operator.invert,
     }
 
     def unaryOperator(self, op):
-        x = self.frame.pop()
-        self.frame.push(self.UNARY_OPERATORS[op](x))
+        try:  # Reduce the number of method calls in unaryOperator as well
+            self.frame.stack[-1] = self.UNARY_OPERATORS[op](self.frame.stack[-1])
+        except Exception as e:
+            raise VirtualMachineError(f"Error in unary operation '{op}': {e}")
 
     BINARY_OPERATORS = {
-        'POWER':    pow,
-        'MULTIPLY': operator.mul,
-        'FLOOR_DIVIDE': operator.floordiv,
-        'TRUE_DIVIDE':  operator.truediv,
-        'MODULO':   operator.mod,
-        'ADD':      operator.add,
-        'SUBTRACT': operator.sub,
-        'SUBSCR':   operator.getitem,
-        'LSHIFT':   operator.lshift,
-        'RSHIFT':   operator.rshift,
-        'AND':      operator.and_,
-        'XOR':      operator.xor,
-        'OR':       operator.or_,
+        "POWER": pow,
+        "MULTIPLY": operator.mul,
+        "FLOOR_DIVIDE": operator.floordiv,
+        "TRUE_DIVIDE": operator.truediv,
+        "MODULO": operator.mod,
+        "ADD": operator.add,
+        "SUBTRACT": operator.sub,
+        "SUBSCR": operator.getitem,
+        "LSHIFT": operator.lshift,
+        "RSHIFT": operator.rshift,
+        "AND": operator.and_,
+        "XOR": operator.xor,
+        "OR": operator.or_,
     }
 
     def binaryOperator(self, op):
-        x, y = self.frame.popn(2)
-        self.frame.push(self.BINARY_OPERATORS[op](x, y))
+        try:  # Combine pop and push operations to reduce the number of method calls
+            x, y = self.frame.stack[-2:]
+            self.frame.stack[-2:] = [self.BINARY_OPERATORS[op](x, y)]
+        except Exception as e:
+            raise VirtualMachineError(f"Error in binary operation '{op}': {e}")
 
     COMPARE_OPERATORS = [
         operator.lt,
@@ -430,14 +440,13 @@ class VirtualMachine(object):
         elif count == 3:
             x, y, z = self.frame.popn(3)
             self.frame.push(slice(x, y, z))
-        else:           # pragma: no cover
+        else:  # pragma: no cover
             raise VirtualMachineError("Strange BUILD_SLICE count: %r" % count)
 
     def byte_LIST_APPEND(self, count):
         val = self.frame.pop()
-        the_list = self.frame.stack[-count] # peek
+        the_list = self.frame.stack[-count]  # peek
         the_list.append(val)
-
 
     ## Jumps
 
@@ -474,7 +483,7 @@ class VirtualMachine(object):
     ## Blocks
 
     def byte_SETUP_LOOP(self, dest):
-        self.frame.push_block('loop', dest)
+        self.frame.push_block("loop", dest)
 
     def byte_GET_ITER(self):
         self.frame.push(iter(self.frame.pop()))
@@ -489,7 +498,7 @@ class VirtualMachine(object):
             self.jump(jump)
 
     def byte_BREAK_LOOP(self):
-        return 'break'
+        return "break"
 
     def byte_CONTINUE_LOOP(self, dest):
         # This is a trick with the return value.
@@ -499,13 +508,13 @@ class VirtualMachine(object):
         # pushed on the stack for both, so continue puts the jump destination
         # into return_value.
         self.return_value = dest
-        return 'continue'
+        return "continue"
 
     def byte_SETUP_EXCEPT(self, dest):
-        self.frame.push_block('setup-except', dest)
+        self.frame.push_block("setup-except", dest)
 
     def byte_SETUP_FINALLY(self, dest):
-        self.frame.push_block('finally', dest)
+        self.frame.push_block("finally", dest)
 
     def byte_POP_BLOCK(self):
         self.frame.pop_block()
@@ -520,25 +529,25 @@ class VirtualMachine(object):
         return self.do_raise(exc, cause)
 
     def do_raise(self, exc, cause):
-        if exc is None:         # reraise
+        if exc is None:  # reraise
             exc_type, val, tb = self.last_exception
 
         elif type(exc) == type:  # As in `raise ValueError`
             exc_type = exc
-            val = exc()             # Make an instance.
+            val = exc()  # Make an instance.
         elif isinstance(exc, BaseException):
             # As in `raise ValueError('foo')`
             exc_type = type(exc)
             val = exc
         else:
-            return 'exception' # failure
+            return "exception"  # failure
 
         self.last_exception = exc_type, val, val.__traceback__
-        return 'exception'
+        return "exception"
 
     def byte_POP_EXCEPT(self):
         block = self.frame.pop_block()
-        if block.type != 'except-handler':
+        if block.type != "except-handler":
             raise Exception("popped block is not an except handler")
         current_exc = self.frame.unwind_block(block)
         if current_exc is not None:
@@ -551,12 +560,12 @@ class VirtualMachine(object):
         code = self.frame.pop()
         defaults = self.frame.popn(argc)
         globs = self.frame.global_names
-        #TODO: if we're not supporting kwargs, do we need the defaults?
+        # TODO: if we're not supporting kwargs, do we need the defaults?
         fn = Function(name, code, globs, defaults, None, self)
         self.frame.push(fn)
 
     def byte_CALL_FUNCTION(self, arg):
-        lenKw, lenPos = divmod(arg, 256) # KWargs not supported in byterun
+        lenKw, lenPos = divmod(arg, 256)  # KWargs not supported in byterun
         posargs = self.frame.popn(lenPos)
 
         func = self.frame.pop()
@@ -573,7 +582,9 @@ class VirtualMachine(object):
     def byte_IMPORT_NAME(self, name):
         level, fromlist = self.frame.popn(2)
         frame = self.frame
-        self.frame.push(__import__(name, frame.global_names, frame.local_names, fromlist, level))
+        self.frame.push(
+            __import__(name, frame.global_names, frame.local_names, fromlist, level)
+        )
 
     def byte_IMPORT_FROM(self, name):
         mod = self.frame.top()
@@ -585,5 +596,3 @@ class VirtualMachine(object):
 
     def byte_STORE_LOCALS(self):
         self.frame.local_names = self.frame.pop()
-
-
